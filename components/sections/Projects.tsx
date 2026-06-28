@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ExternalLink } from "lucide-react";
+import Link from "next/link";
 import { projects, type Project } from "@/data/projects";
 
 // ── GitHub icon (lucide-react v1 dropped it) ──────────────────────
@@ -38,7 +39,6 @@ function useInView(threshold = 0.1) {
 }
 
 // ── Hex opacity helpers ───────────────────────────────────────────
-// Appends a 2-digit hex alpha to a 6-char hex color string.
 function hexAlpha(hex: string, alpha: number): string {
   const h = hex.replace("#", "");
   const a = Math.round(alpha * 255)
@@ -47,32 +47,13 @@ function hexAlpha(hex: string, alpha: number): string {
   return `#${h}${a}`;
 }
 
-// ── Internship header (no iframe) ─────────────────────────────────
-function InternshipHeader({ accentColor }: { accentColor: string }) {
-  return (
-    <div className="border-b border-[#222222] h-24 flex items-center px-5 bg-[#111111]">
-      <div className="flex flex-col gap-1">
-        <div className="flex items-center gap-2">
-          {/* Pulsing live dot */}
-          <span
-            className="inline-block size-2 rounded-full animate-pulse"
-            style={{ backgroundColor: accentColor }}
-          />
-          <span className="text-xs font-mono text-[#a3a3a3]">Jun 2025 – Present</span>
-        </div>
-        <span className="text-xs text-[#525252]">Premier Shopify Partner</span>
-      </div>
-    </div>
-  );
-}
-
 // ── Iframe preview header ─────────────────────────────────────────
 function IframeHeader({ liveUrl }: { liveUrl: string }) {
   return (
-    <div className="relative h-48 overflow-hidden border-b border-[#222222]">
+    <div className="relative h-56 overflow-hidden border-b border-[#222222] pointer-events-none">
       {/* Hover overlay */}
-      <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/30 pointer-events-none transition-opacity duration-300 opacity-100 group-hover:opacity-0">
-        <span className="text-xs text-white/60">Click to explore →</span>
+      <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/30 transition-opacity duration-300 opacity-100 group-hover:opacity-0">
+        <span className="text-xs text-white/60">Open live site ↗</span>
       </div>
       <iframe
         src={liveUrl}
@@ -104,7 +85,8 @@ function ProjectCard({
   inView: boolean;
   delay: number;
 }) {
-  const { title, tagline, description, bullets, tech, liveUrl, githubUrl, accentColor, hasIframe } = project;
+  const { id, title, tagline, description, bullets, tech, liveUrl, githubUrl, accentColor, hasIframe } = project;
+  const isLarge = project.size === "large";
 
   return (
     <div
@@ -115,115 +97,132 @@ function ProjectCard({
         transitionDelay: `${delay}ms`,
       }}
     >
-      <div
-        className="group h-full rounded-xl border bg-[#111111] overflow-hidden transition-all duration-300 hover:-translate-y-1"
-        style={{
-          borderColor: hexAlpha(accentColor, 0.2),
-        }}
-        onMouseEnter={(e) =>
-          ((e.currentTarget as HTMLDivElement).style.borderColor = accentColor)
-        }
-        onMouseLeave={(e) =>
-          ((e.currentTarget as HTMLDivElement).style.borderColor = hexAlpha(accentColor, 0.2))
-        }
-      >
-        {/* Top visual */}
-        {hasIframe ? (
-          <IframeHeader liveUrl={liveUrl} />
-        ) : (
-          <InternshipHeader accentColor={accentColor} />
-        )}
+      <Link href={`/projects/${id}`} className="block h-full">
+        <div
+          className={`group rounded-xl border bg-[#111111] overflow-hidden transition-all duration-300 hover:-translate-y-1 flex flex-col ${isLarge ? "h-full min-h-[480px] border-t-2" : "h-auto"
+            }`}
+          style={{
+            borderColor: hexAlpha(accentColor, 0.2),
+            borderTopColor: isLarge ? accentColor : undefined,
+            ["--accent-color" as any]: accentColor,
+          }}
+          onMouseEnter={(e) => {
+            const el = e.currentTarget as HTMLDivElement;
+            el.style.borderColor = accentColor;
+          }}
+          onMouseLeave={(e) => {
+            const el = e.currentTarget as HTMLDivElement;
+            el.style.borderColor = hexAlpha(accentColor, 0.2);
+            if (isLarge) {
+              el.style.borderTopColor = accentColor;
+            }
+          }}
+        >
+          {/* Top visual */}
+          {hasIframe && <IframeHeader liveUrl={liveUrl} />}
 
-        {/* Card body */}
-        <div className="p-5 flex flex-col gap-3">
-          {/* Title row */}
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <h3 className="font-semibold text-white text-lg leading-tight">
-                {title}
-              </h3>
-              <p className="text-xs mt-0.5" style={{ color: accentColor }}>
-                {tagline}
+          {/* Card body */}
+          <div className="p-5 flex flex-col flex-1 justify-between gap-4">
+            <div className="flex flex-col gap-3">
+              {/* Title row */}
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="font-bold text-white text-xl leading-tight">
+                    {title}
+                  </h3>
+                  <p className="text-xs mt-0.5" style={{ color: accentColor }}>
+                    {tagline}
+                  </p>
+                </div>
+
+                {/* Icon links */}
+                <div className="flex items-center gap-2 shrink-0 mt-0.5 z-20">
+                  {githubUrl && (
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        window.open(githubUrl, "_blank", "noopener,noreferrer");
+                      }}
+                      aria-label={`${title} GitHub`}
+                      className="text-[#525252] hover:text-white transition-colors duration-200 cursor-pointer focus:outline-none bg-transparent border-0 p-0"
+                    >
+                      <GitHubIcon className="size-4" />
+                    </button>
+                  )}
+                  {liveUrl && (
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        window.open(liveUrl, "_blank", "noopener,noreferrer");
+                      }}
+                      aria-label={`${title} live demo`}
+                      className="text-[#525252] hover:text-white transition-colors duration-200 cursor-pointer focus:outline-none bg-transparent border-0 p-0"
+                    >
+                      <ExternalLink className="size-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Description */}
+              <p className="text-sm text-[#c4c4c4] leading-relaxed">
+                {description}
               </p>
+
+              {/* Bullet points */}
+              <ul className="flex flex-col gap-1.5">
+                {bullets.map((b, i) => (
+                  <li key={i} className="flex gap-2 text-xs text-[#888888] leading-relaxed">
+                    <span className="shrink-0 mt-px" style={{ color: accentColor }}>
+                      ▸
+                    </span>
+                    {b}
+                  </li>
+                ))}
+              </ul>
             </div>
 
-            {/* Icon links */}
-            <div className="flex items-center gap-2 shrink-0 mt-0.5">
-              {githubUrl && (
-                <a
-                  href={githubUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label={`${title} GitHub`}
-                  className="text-[#525252] hover:text-white transition-colors duration-200"
-                >
-                  <GitHubIcon className="size-4" />
-                </a>
-              )}
-              {liveUrl && (
-                <a
-                  href={liveUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label={`${title} live demo`}
-                  className="text-[#525252] hover:text-white transition-colors duration-200"
-                >
-                  <ExternalLink className="size-4" />
-                </a>
-              )}
-            </div>
-          </div>
-
-          {/* Description */}
-          <p className="text-sm text-[#a3a3a3] leading-relaxed">
-            {description}
-          </p>
-
-          {/* Bullets */}
-          <ul className="flex flex-col gap-1.5">
-            {bullets.map((b, i) => (
-              <li key={i} className="flex gap-2 text-xs text-[#525252] leading-relaxed">
-                <span className="shrink-0 mt-px" style={{ color: accentColor }}>
-                  ▸
-                </span>
-                {b}
-              </li>
-            ))}
-          </ul>
-
-          {/* Tech badges */}
-          <div className="flex flex-wrap gap-1.5 mt-1">
-            {tech.map((t) => (
-              <span
-                key={t}
-                className="font-mono text-xs px-2 py-0.5 rounded-full border"
-                style={{
-                  borderColor: hexAlpha(accentColor, 0.4),
-                  color: accentColor,
-                  backgroundColor: hexAlpha(accentColor, 0.1),
-                }}
-              >
-                {t}
+            {/* Tech badges & View case study */}
+            <div className="flex items-end justify-between gap-4 mt-auto pt-3">
+              <div className="flex flex-wrap gap-1.5">
+                {tech.map((t) => (
+                  <span
+                    key={t}
+                    className="font-mono text-[11px] px-2.5 py-1 rounded-full border"
+                    style={{
+                      borderColor: hexAlpha(accentColor, 0.4),
+                      color: accentColor,
+                      backgroundColor: hexAlpha(accentColor, 0.1),
+                    }}
+                  >
+                    {t}
+                  </span>
+                ))}
+              </div>
+              <span className="text-xs text-[#525252] group-hover:text-[var(--accent-color)] transition-colors duration-200 shrink-0 font-medium">
+                View case study →
               </span>
-            ))}
+            </div>
           </div>
         </div>
-      </div>
+      </Link>
     </div>
   );
 }
 
 // ── Column span map ───────────────────────────────────────────────
 const colSpanMap: Record<string, string> = {
-  clearclause:     "lg:col-span-2",
-  docgen:          "lg:col-span-2",
-  stackit:         "lg:col-span-2",
-  "dynamic-dreamz": "lg:col-span-2",
+  clearclause: "lg:col-span-2",
+  docgen: "lg:col-span-2",
+  stackit: "lg:col-span-2",
 };
 
 // ── Projects section ──────────────────────────────────────────────
 export default function Projects() {
   const { ref, inView } = useInView(0.05);
+  const gridProjects = projects.filter((p) => p.id !== "dynamic-dreamz");
 
   return (
     <section id="projects" className="bg-[#0a0a0a] py-24">
@@ -246,7 +245,7 @@ export default function Projects() {
 
         {/* Bento grid */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-          {projects.map((project, i) => (
+          {gridProjects.map((project, i) => (
             <ProjectCard
               key={project.id}
               project={project}
@@ -256,7 +255,6 @@ export default function Projects() {
             />
           ))}
         </div>
-
       </div>
     </section>
   );
